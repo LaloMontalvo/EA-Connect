@@ -1,27 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart'; // Debe generarse
 import 'screens/splash_screen.dart';
-import 'screens/login_screen.dart';
+import 'screens/feed_screen.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Necesario para async antes de runApp
-  await Firebase.initializeApp(); // 👈 Inicializa Firebase
-  runApp(EAConnectApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  runApp(AppConstruccion());
 }
 
-class EAConnectApp extends StatelessWidget {
+class AppConstruccion extends StatelessWidget {
+  const AppConstruccion({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'EA Connect',
-      theme: ThemeData(
-        primarySwatch: Colors.indigo,
-      ),
-      home: SplashScreen(),
+      title: 'EA CONNECT',
       debugShowCheckedModeBanner: false,
-      routes: {
-        '/login': (context) => LoginScreen(),
-      },
+      theme: ThemeData(
+        brightness: Brightness.light,
+        useMaterial3: true,
+      ),
+      darkTheme: ThemeData.dark(),
+      home: SplashScreen(),
     );
   }
 }

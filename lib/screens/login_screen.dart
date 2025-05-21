@@ -1,113 +1,81 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'form_cliente_screen.dart';
-import 'form_arquitecto_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  _LoginScreenState createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _usuarioController = TextEditingController();
-  final TextEditingController _contrasenaController = TextEditingController();
-  bool _cargando = false;
+  final _formKey = GlobalKey<FormState>();
+  String email = '';
+  String password = '';
+  bool isLoading = false;
 
-  Future<void> _iniciarSesion() async {
-    setState(() => _cargando = true);
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-    String usuario = _usuarioController.text.trim();
-    String contrasena = _contrasenaController.text.trim();
+  void login() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() => isLoading = true);
 
-    try {
-      // Buscar en arquitectos
-      final arquitectos = await FirebaseFirestore.instance
-          .collection('arquitectos')
-          .where('usuario', isEqualTo: usuario)
-          .where('contrasena', isEqualTo: contrasena)
-          .get();
-
-      if (arquitectos.docs.isNotEmpty) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => FormArquitectoScreen(usuarioData: arquitectos.docs.first),
-          ),
+      try {
+        UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+          email: email.trim(),
+          password: password.trim(),
         );
-        return;
+
+        // ✅ Redirige si inicia sesión correctamente
+        Navigator.pushReplacementNamed(context, '/home'); // Crea tu pantalla "home"
+
+      } on FirebaseAuthException catch (e) {
+        String message = 'Ocurrió un error';
+        if (e.code == 'user-not-found') {
+          message = 'Usuario no encontrado';
+        } else if (e.code == 'wrong-password') {
+          message = 'Contraseña incorrecta';
+        }
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      } finally {
+        setState(() => isLoading = false);
       }
-
-      // Buscar en clientes
-      final clientes = await FirebaseFirestore.instance
-          .collection('clientes')
-          .where('usuario', isEqualTo: usuario)
-          .where('contrasena', isEqualTo: contrasena)
-          .get();
-
-      if (clientes.docs.isNotEmpty) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => FormClienteScreen(usuarioData: clientes.docs.first),
-          ),
-        );
-        return;
-      }
-
-      // Si no se encontró
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Usuario o contraseña incorrectos')),
-      );
-    } catch (e) {
-      print('Error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error en el login')),
-      );
     }
-
-    setState(() => _cargando = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Center(
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              Image.asset('assets/Logo.png', height: 120),
-              SizedBox(height: 20),
-              TextField(
-                controller: _usuarioController,
-                decoration: InputDecoration(
-                  labelText: 'Usuario',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
+      appBar: AppBar(title: Text('Iniciar Sesión')),
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    TextFormField(
+                      decoration: InputDecoration(labelText: 'Correo electrónico'),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) =>
+                          value!.isEmpty ? 'Ingresa tu correo' : null,
+                      onChanged: (value) => email = value,
+                    ),
+                    TextFormField(
+                      decoration: InputDecoration(labelText: 'Contraseña'),
+                      obscureText: true,
+                      validator: (value) =>
+                          value!.length < 6 ? 'Mínimo 6 caracteres' : null,
+                      onChanged: (value) => password = value,
+                    ),
+                    SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: login,
+                      child: Text('Ingresar'),
+                    ),
+                  ],
                 ),
               ),
-              SizedBox(height: 16),
-              TextField(
-                controller: _contrasenaController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Contraseña',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock),
-                ),
-              ),
-              SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _cargando ? null : _iniciarSesion,
-                child: _cargando
-                    ? CircularProgressIndicator(color: Colors.white)
-                    : Text('Ingresar'),
-              ),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 }
